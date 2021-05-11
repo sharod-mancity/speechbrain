@@ -424,7 +424,7 @@ class Brain:
 
         # Arguments passed via the run opts dictionary
         run_opt_defaults = {
-            "debug": False,
+            "debug": True,
             "debug_batches": 2,
             "debug_epochs": 2,
             "device": "cpu",

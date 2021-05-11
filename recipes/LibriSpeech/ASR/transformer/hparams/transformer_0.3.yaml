@@ -10,11 +10,10 @@
 # Seed needs to be set at top of yaml, before objects with parameters are made
 seed: 8886
 __set_seed: !apply:torch.manual_seed [!ref <seed>]
-output_folder: !ref results/transformer/<seed>
+output_folder: !ref results/transformer_0.3/<seed>
 wer_file: !ref <output_folder>/wer.txt
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
-debug: True
 
 # Language model (LM) pretraining
 # NB: To avoid mismatch, the speech recognizer must be trained with the same
@@ -25,7 +24,7 @@ debug: True
 pretrained_lm_tokenizer_path: speechbrain/asr-transformer-transformerlm-librispeech
 
 # Data files
-data_folder: /dccstor/cssblr/ashish/speechbrain/data/librispeech # e.g., /path/to/LibriSpeech
+data_folder: /dccstor/cssblr/ashish/speechbrain/data/librispeech_0.3 # e.g., /path/to/LibriSpeech
 # If RIRS_NOISES dir exists in /localscratch/xxx_corpus/RIRS_NOISES
 # then data_folder_rirs should be /localscratch/xxx_corpus
 # otherwise the dataset will automatically be downloaded
