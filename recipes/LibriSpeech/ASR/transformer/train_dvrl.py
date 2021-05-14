@@ -205,7 +205,8 @@ class ASR(sb.core.Brain):
 
 
                     #(4) Main objective loss optimization
-                    train_loss = self.fit_batch(batch, feats, sample_weights)
+                    for i in range(10):
+                      train_loss = self.fit_batch(batch, feats, sample_weights)
 
                     # Validation stage
                     if valid_set is not None:
