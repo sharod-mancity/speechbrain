@@ -1,31 +1,25 @@
+
 #!/usr/bin/env python3
 """Recipe for training a Transformer ASR system with librispeech.
 The system employs an encoder, a decoder, and an attention mechanism
 between them. Decoding is performed with (CTC/Att joint) beamsearch coupled with a neural
 language model.
-
 To run this recipe, do the following:
 > python train.py hparams/transformer.yaml
 > python train.py hparams/conformer.yaml
-
 With the default hyperparameters, the system employs a convolutional frontend and a transformer.
 The decoder is based on a Transformer decoder. Beamsearch coupled with a Transformer
 language model is used  on the top of decoder probabilities.
-
 The neural network is trained on both CTC and negative-log likelihood
 targets and sub-word units estimated with Byte Pairwise Encoding (BPE)
 are used as basic recognition tokens. Training is performed on the full
 LibriSpeech dataset (960 h).
-
 The best model is the avergage of the checkpoints from last 5 epochs.
-
 The experiment file is flexible enough to support a large variety of
 different systems. By properly changing the parameter files, you can try
 different encoders, decoders, tokens (e.g, characters instead of BPE),
 training split (e.g, train-clean 100 rather than the full one), and many
 other possible variations.
-
-
 Authors
  * Jianyuan Zhong 2020
  * Mirco Ravanelli 2020
@@ -56,7 +50,7 @@ logger = logging.getLogger(__name__)
 # Define training procedure
 class ASR(sb.core.Brain):
 
-    def data_value_estimator(self):
+    def data_value_estimator(self,y_pred_diff,y_input):
         inp_dim = 80
         #code to add a neural network for data value estimator.
         mlp_options={}
@@ -81,21 +75,17 @@ class ASR(sb.core.Brain):
     ):
         """Iterate epochs and datasets to improve objective with data valuation.
         Data Valuation using Reinforcement Learning - https://arxiv.org/abs/1909.11671
-
         Relies on the existence of multiple functions that can (or should) be
         overridden. The following methods are used and expected to have a
         certain behavior:
-
         * ``fit_batch()``
         * ``evaluate_batch()``
         * ``update_average()``
         * ``data_value_estimator()``
-
         If the initialization was done with distributed_count > 0 and the
         distributed_backend is ddp, this will generally handle multiprocess
         logic, like splitting the training data into subsets for each device and
         only saving a checkpoint on the main process.
-
         Arguments
         ---------
         epoch_counter : iterable
@@ -163,7 +153,8 @@ class ASR(sb.core.Brain):
         inner_epochs = 20
 
         pred_model = self.modules
-
+        
+		predictions = self.compute_forward(train_set, feats, sb.Stage.VALID)
         # Only show progressbar if requested and main_process
         enable = progressbar and sb.utils.distributed.if_main_process()
         with tqdm(train_set, initial=self.step, dynamic_ncols=True, disable=not enable,) as t:
@@ -184,12 +175,14 @@ class ASR(sb.core.Brain):
                 feats = self.hparams.compute_features(wavs)
                 current_epoch = self.hparams.epoch_counter.current
                 feats = self.hparams.normalize(feats, wav_lens, epoch=current_epoch)
-                
+                tokens_eos, tokens_eos_lens = batch.tokens_eos
+                _,y_train_valid_pred,_,_=self.compute_forward(batch, feats, sb.Stage.TRAIN)
+                y_pred_diff = np.abs(tokens_eos - y_train_valid_pred)
                 for i in range(inner_epochs):
                     #For each batch run it for inner epochs
 
                     #(1) get selection probabilities from the data value estimator.
-                    selection_probabilities = data_value_estimator(feats)
+                    selection_probabilities = data_value_estimator(feats,y_pred_diff,tokens_eos)
                 
                     #(2) Binomial sampling
                     sp = selection_probabilities.cpu().clone().detach().numpy() #create a clone and then get the numpy array
